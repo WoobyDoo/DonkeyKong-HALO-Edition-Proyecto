@@ -1,0 +1,358 @@
+import pygame
+from pygame import *
+
+WIN_WIDTH = 800
+WIN_HEIGHT = 640
+HALF_WIDTH = int(WIN_WIDTH / 2)
+HALF_HEIGHT = int(WIN_HEIGHT / 2)
+
+DISPLAY = (WIN_WIDTH, WIN_HEIGHT)
+
+def main():
+    
+    pygame.init()
+    screen = pygame.display.set_mode(DISPLAY)
+    pygame.display.set_caption("Donkey Kong: HALO Edition")
+    timer = pygame.time.Clock()
+    Yellow= (255,239,3)
+
+    numFPS = 0
+    FPS = 60
+    start  =150
+    font = pygame.font.Font(None,25)                                #tx font and size
+    #Name = str(input("Write your name: "))
+
+    up = down = left = right = running = False
+    bg = Surface((32,32))
+    bg.convert()
+    bg.fill(Color("#000000"))
+    entities = pygame.sprite.Group()
+    player = Player(700, 600)
+    enemy = Enemy(50,18)
+    obj = Objective(250, 10)
+    gren = Grenade(100,42)
+    platforms = []
+
+    x = y = 0
+    level = [ 
+              "peeeeeeeeeeeeeeeeeeeeeeep",
+              "peeeeeeeeeeeeeeeeeeeeeeep",
+              "pppppppppppppppppdppeeeep",  #1----
+              "peeeeeceeeeeeeeeedeeeeeep",
+              "peeeeeeeeeeeeeeeedeeeeeep",
+              "peeepppppdppppppppppppppp",  #2----
+              "peeeeeeeedeeeeeeeeeeeeeep",
+              "peeeeeeeedeeeeeeeeeeeeeep",
+              "ppppppppppppppdppppeeeeep",  #3----
+              "peeeeeeceeeeeedeeeeeeeeep",
+              "peeeeeeeeeeeeedeeeeeeeeep",
+              "peeeepppppdpppppppppppppp",  #4----
+              "peeeeeeeeedeeeeeeceeeeeep",
+              "peeeeeeeeedeeeeeeeeeeeeep",
+              "ppppppppppppppdpppppeeeep",  #5----
+              "peeeeeeeeeeeeedeeeeeeeeep",
+              "peeeeeeeeeeeeedeeeeeeeeep",  
+              "peeepppdppppppppppppppppp",  #6----
+              "peeeeeedeeeeeeeeeceeeeeep",
+              "peeeeeedeeeeeeeeeeeeeeeep",
+              "ppppppppppppppppppppppppp",  #Base
+        ]
+    # build the level
+    for row in level:
+        for col in row:
+            if col == "p":
+                p = Platform(x, y)
+                platforms.append(p)
+                entities.add(p)
+            if col == 'd':
+                d = Ladder(x, y)
+                entities.add(d)
+            if col == 'c':
+                c = LadBroken(x, y)
+                entities.add(c)
+            x += 32
+        y += 32
+        x = 0
+
+    entities.add(player, enemy, gren, obj)
+
+    while 1:
+        timer.tick(60)
+        lefter = True
+        righter = True
+        for e in pygame.event.get():
+            if e.type == QUIT: pygame.quit()
+            if e.type == KEYDOWN and e.key == K_UP:
+                up = True
+            if e.type == KEYDOWN and e.key == K_DOWN:
+                down = True
+            if e.type == KEYDOWN and e.key == K_LEFT:
+                left = True
+            if e.type == KEYDOWN and e.key == K_RIGHT:
+                right = True
+            if e.type == KEYDOWN and e.key == K_SPACE:
+                running = True
+
+            if e.type == KEYUP and e.key == K_UP:
+                up = False
+            if e.type == KEYUP and e.key == K_DOWN:
+                down = False
+            if e.type == KEYUP and e.key == K_RIGHT:
+                right = False
+            if e.type == KEYUP and e.key == K_LEFT:
+                left = False
+            if e.type == KEYUP and e.key == K_RIGHT:
+                right = False
+        
+        # draw background
+        for y in range(32):
+            for x in range(32):
+                screen.blit(bg, (x * 32, y * 32))
+
+        #-------------Game Time----------------
+        totseg  = start - (numFPS // FPS)
+        if totseg < 0:
+            totseg = 0
+        minutes = totseg // 60
+        seconds = totseg % 60
+        outtext = "Time left:{0:02}:{1:00}".format(minutes,seconds)
+        text = font.render(outtext, False, Yellow)
+        screen.blit(text, [640, 4])
+        #--------------------------------------------
+
+        #-------------Player Name-------------
+        #nameout = ("Player: ", Name)
+        #ntx = font.render(nameout, False, Yellow)
+        #screen.blit(ntx, [100, 4])
+        #-------------------------------------------
+
+        # update player, draw everything else
+        player.update(up, down, left, right, running, platforms)
+        gren.update(lefter,righter,platforms)
+        entities.draw(screen)
+        numFPS +=1
+        pygame.display.update()
+
+class Entity(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+
+class Player(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.xvel = 0
+        self.yvel = 0
+        self.onGround = False
+        self.image = pygame.image.load("m1.png") #Surface((32,32))
+        #self.image.fill(Color("#0000FF"))
+        self.image.convert()
+        self.rect = Rect(x, y, 32, 32)
+
+    def update(self, up, down, left, right, running, platforms):
+        if up:
+            # only jump if on the ground
+            if self.onGround: self.yvel -= 10
+        if down:
+            pass
+        if running:
+            self.xvel = 12
+        if left:
+            self.xvel = -4
+        if right:
+            self.xvel = 4
+        if not self.onGround:
+            # only accelerate with gravity if in the air
+            self.yvel += 0.4
+            # max falling speed
+            if self.yvel > 100: self.yvel = 100
+        if not(left or right):
+            self.xvel = 0
+        # increment in x direction
+        self.rect.left += self.xvel
+        # do x-axis collisions
+        self.collide(self.xvel, 0, platforms)
+        # increment in y direction
+        self.rect.top += self.yvel
+        # assuming we're in the air
+        self.onGround = False;
+        # do y-axis collisions
+        self.collide(0, self.yvel, platforms)
+
+    def collide(self, xvel, yvel, platforms):
+        for p in platforms:
+            if pygame.sprite.collide_rect(self, p):
+                if xvel > 0:
+                    self.rect.right = p.rect.left
+                if xvel < 0:
+                    self.rect.left = p.rect.right
+                if yvel > 0:
+                    self.rect.bottom = p.rect.top
+                    self.onGround = True
+                    self.yvel = 0
+                if yvel < 0:
+                    self.rect.top = p.rect.bottom
+
+
+class Platform(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("Stone.png") #Surface((32, 32))
+        self.image.convert()
+        #self.image.fill(Color("#DDDDDD"))
+        self.rect = Rect(x, y, 32, 32)
+
+    def update(self):
+        pass
+
+class Ladder(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("ladd1.png")#Surface((32,32))
+        self.image.convert()
+        #self.image.fill(Color("#FFFFFF"))
+        self.rect = Rect(x, y, 32, 32)
+        
+class LadBroken(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("ladd2.png")#Surface((32,32))
+        self.image.convert()
+        #self.image.fill(Color("#FFFFFF"))
+        self.rect = Rect(x, y, 32, 32)
+
+class Enemy(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = pygame.image.load("ene.png")#Surface((45,45))
+        self.image.convert
+        #self.image.fill(Color("#FFFFFF"))
+        self.rect = Rect(x, y, 45, 45)
+
+class Objective(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = Surface((45,45))
+        self.image.convert
+        self.image.fill(Color("#FFFFFF"))
+        self.rect = Rect(x, y, 38, 54)
+
+class Grenade(Entity):
+    def __init__(self, x, y):
+        Entity.__init__(self)
+        self.image = Surface((20,20))
+        self.image.convert
+        self.image.fill(Color("#FFFFFF"))
+        self.rect = Rect(x, y, 20, 20)
+        self.xvel = 0
+        self.yvel = 0
+        self.onGround = False
+
+    def update(self, lefter, righter, platforms):
+        if lefter:
+            self.xvel = -4
+        if righter:
+            self.xvel = 4
+        if not self.onGround:
+            self.yvel += 0.4
+            if self.yvel > 100: self.yvel = 100
+        # increment in x direction
+        self.rect.left += self.xvel
+        # do x-axis collisions
+        self.collide(self.xvel, 0, platforms)
+        # increment in y direction
+        self.rect.top += self.yvel
+        # assuming we're in the air
+        self.onGround = False;
+        # do y-axis collisions
+        self.collide(0, self.yvel, platforms)
+
+    def collide(self, xvel, yvel, platforms):
+        for p in platforms:
+            if pygame.sprite.collide_rect(self, p):
+                if xvel > 0:
+                    self.rect.right = p.rect.left
+                if xvel < 0:
+                    self.rect.left = p.rect.right
+                if yvel > 0:
+                    self.rect.bottom = p.rect.top
+                    self.onGround = True
+                    self.yvel = 0
+                if yvel < 0:
+                    self.rect.top = p.rect.bottom
+
+
+class ExitBlock(Platform):
+    def __init__(self, x, y):
+        Platform.__init__(self, x, y)
+        self.image.fill(Color("#0033FF"))
+
+if __name__ == "__main__":
+    main()
+    list_levels = []
+    list_levels.append(Level01(player))
+    #-----Current level
+    curr_level_not = 0
+    curr_level = list_levels[curr_level_not]
+    
+    up = down = left = right = running = False
+    bg = Surface((32,32))
+    bg.convert()
+    bg.fill(Color("#000000"))
+    
+    entities = pygame.sprite.Group()
+    player.level = curr_level
+    player = Player(32, 32)
+    x = y = 0
+    entities.add(player)
+    gameLoop = True
+
+    clock = pygame.time.Clock()
+    
+    while gameLoop:
+        clock.tick(60)
+
+        for e in pygame.event.get():
+            if e.type == QUIT:
+                gameLoop = False
+
+            #---------MOV TECLAS----------#
+                
+            if e.type == KEYDOWN and e.key == K_UP:
+                up = True
+            if e.type == KEYDOWN and e.key == K_DOWN:
+                down = True
+            if e.type == KEYDOWN and e.key == K_LEFT:
+                left = True
+            if e.type == KEYDOWN and e.key == K_RIGHT:
+                right = True
+            if e.type == KEYDOWN and e.key == K_SPACE:
+                running = True
+
+            if e.type == KEYUP and e.key == K_UP:
+                up = False
+            if e.type == KEYUP and e.key == K_DOWN:
+                down = False
+            if e.type == KEYUP and e.key == K_RIGHT:
+                right = False
+            if e.type == KEYUP and e.key == K_LEFT:
+                left = False
+            if e.type == KEYUP and e.key == K_RIGHT:
+                right = False
+            #--------------------------------#
+
+        
+
+        # update player, draw everything else
+        player.update(up, down, left, right, running, platforms)
+        
+        entities.update()
+        curr_level.update()
+        curr_level.draw(screen)
+        entities.draw(screen)
+        pygame.display.flip()
+        
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
+
