@@ -4,6 +4,7 @@
 #http://stackoverflow.com/questions/14354171/add-scrolling-to-a-platformer-in-pygame
 #http://programarcadegames.com/python_examples/f.php?file=timer.py&lang=es
 #http://www.loserjuegos.com.ar/referencia/articulos/menu
+#LA FUENTE USADA EN EL JUEGO SE PUEDE ENCONTRAR EN http://www.dafont.com/es/halo.font
 
 import pygame
 from pygame import *
